@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Recherche décès matchID</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1em; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background-color: #f2f2f2; }
+    #pagination button { margin: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Recherche décès matchID</h1>
+
+  <form id="searchForm">
+    <label>Nom : <input type="text" id="nom" required /></label>
+    <label>Prénom : <input type="text" id="prenom"></label>
+    <button type="submit">Rechercher</button>
+  </form>
+
+  <div id="results"></div>
+  <div id="pagination"></div>
+
+  <button id="exportBtn" style="display:none;">Exporter en Excel</button>
+
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script>
+    let currentPage = 0;
+    const pageSize = 10;
+    let currentData = [];
+
+    document.getElementById('searchForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      currentPage = 0;
+      fetchData();
+    });
+
+    async function fetchData() {
+      const nom = document.getElementById('nom').value.trim();
+      const prenom = document.getElementById('prenom').value.trim();
+      let query = nom;
+      if(prenom) query += ' ' + prenom;
+
+      const url = `/.netlify/functions/matchid-proxy?q=${encodeURIComponent(query)}&from=${currentPage * pageSize}&size=${pageSize}`;
+      try {
+        const response = await fetch(url);
+        if(!response.ok) throw new Error('Erreur API: ' + response.status);
+        const data = await response.json();
+        currentData = data.hits || [];
+        displayResults(currentData);
+        setupPagination(data.total || 0);
+        document.getElementById('exportBtn').style.display = currentData.length ? 'inline' : 'none';
+      } catch (err) {
+        document.getElementById('results').innerHTML = 'Erreur : ' + err.message;
+      }
+    }
+
+    function displayResults(results) {
+      if(!results.length) {
+        document.getElementById('results').innerHTML = '<p>Aucun résultat</p>';
+        return;
+      }
+      let html = '<table><thead><tr><th>Nom</th><th>Prénom</th><th>Date de décès</th><th>Lieu de décès</th></tr></thead><tbody>';
+      results.forEach(item => {
+        html += `<tr>
+          <td>${item.nom || ''}</td>
+          <td>${item.prenoms?.join(', ') || ''}</td>
+          <td>${item.date_deces || ''}</td>
+          <td>${item.lieu_deces || ''}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      document.getElementById('results').innerHTML = html;
+    }
+
+    function setupPagination(total) {
+      const totalPages = Math.ceil(total / pageSize);
+      let html = '';
+      if (currentPage > 0) {
+        html += '<button onclick="goPage(currentPage - 1)">Précédent</button>';
+      }
+      if (currentPage < totalPages - 1) {
+        html += '<button onclick="goPage(currentPage + 1)">Suivant</button>';
+      }
+      document.getElementById('pagination').innerHTML = html;
+    }
+
+    function goPage(page) {
+      currentPage = page;
+      fetchData();
+    }
+
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const ws = XLSX.utils.json_to_sheet(currentData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Résultats");
+      XLSX.writeFile(wb, "resultats_deces.xlsx");
+    });
+  </script>
+</body>
+</html>
