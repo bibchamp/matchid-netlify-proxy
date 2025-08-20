@@ -1,10 +1,12 @@
 const fetch = require("node-fetch").default;
 
-
 exports.handler = async function(event, context) {
-  const query = event.queryStringParameters.q || "";
+  const nom = event.queryStringParameters.nom || "";
+  const location = event.queryStringParameters.location || "";
   const from = event.queryStringParameters.from || 0;
   const size = event.queryStringParameters.size || 10;
+
+  const query = nom + (location ? " " + location : "");
 
   const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiaWRyaXNzLmJhdG91QGdtYWlsLmNvbSIsInBhc3N3b3JkIjoiNDMwNTI1Iiwic2NvcGVzIjpbInVzZXIiXSwiaWF0IjoxNzU1NjgyMjY4LCJleHAiOjE3NTgyNzQyNjgsImp0aSI6IjE3NTU2ODIyNjgifQ.4vpLvF6u0ZDHVEf-QzL3cZUcFDlsYl5SnOp7tmFLt_E";
 
